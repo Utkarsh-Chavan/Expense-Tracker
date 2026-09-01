@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+<!-- Toast Notification Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body">
+                <span id="toastMessage"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+</div>
+
+<div class="main-container">
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <h1><span class="header-icon">💰</span> Expense Tracker</h1>
+            <p class="header-subtitle">Manage your finances smartly</p>
+        </div>
+        <div class="header-right">
+            <form class="search-box" method="get" action="/" autocomplete="off">
+                <input type="search" name="search" placeholder="Search expenses..." id="searchInput">
+                <button type="submit">🔍</button>
+                <div id="suggestions" class="suggestions-box"></div>
+            </form>
+            <div class="nav-links">
+                <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">
+                    <span class="theme-icon">🌙</span>
+                </button>
+                <a href="#" class="nav-link-item">
+                    <span class="nav-icon">🏠</span>
+                    <span>Home</span>
+                </a>
+                <a href="#" class="nav-link-item">
+                    <span class="nav-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-item active">
+                    <span class="sidebar-icon">📊</span>
+                    <span>Dashboard</span>
+                </div>
+                <div class="sidebar-item" id="expensesBtn">
+                    <span class="sidebar-icon">💳</span>
+                    <span>Expenses</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-actions">
+                <button class="btn-add" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+                    <span class="btn-icon">➕</span>
+                    <span>Add Expense</span>
+                </button>
+                <button class="btn-filter" data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <span class="btn-icon">📅</span>
+                    <span>Filter</span>
+                </button>
+                <button class="btn-export" id="exportBtn">
+                    <span class="btn-icon">📥</span>
+                    <span>Export CSV</span>
+                </button>
+                <a href="/" class="btn-reset">
+                    <span class="btn-icon">🔄</span>
+                    <span>Reset</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="dashboard-content">
+            <!-- Quick Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-info">
+                        <div class="stat-label">Highest Expense</div>
+                        <div class="stat-value" id="highestExpense">₹0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏆</div>
+                    <div class="stat-info">
+                        <div class="stat-label">Top Category</div>
+                        <div class="stat-value" id="topCategory">-</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-info">
+                        <div class="stat-label">Average Daily</div>
+                        <div class="stat-value" id="avgDaily">₹0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💼</div>
+                    <div class="stat-info">
+                        <div class="stat-label">Total Items</div>
+                        <div class="stat-value" id="totalItems">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Switcher -->
+            <div class="chart-switcher">
+                <button class="chart-btn active" data-chart="categoryChartDiv">
+                    <span class="chart-btn-icon">📊</span>
+                    Category
+                </button>
+                <button class="chart-btn" data-chart="pieChartDiv">
+                    <span class="chart-btn-icon">🥧</span>
+                    Pie Chart
+                </button>
+                <button class="chart-btn" data-chart="monthlyChartDiv">
+                    <span class="chart-btn-icon">📈</span>
+                    Monthly
+                </button>
+                <button class="chart-btn" data-chart="yearlyChartDiv">
+                    <span class="chart-btn-icon">📅</span>
+                    Yearly
+                </button>
+            </div>
+
+            <!-- Charts Containers -->
+            <div id="categoryChartDiv" class="chart-container active">
+                <canvas id="categoryChart"></canvas>
+            </div>
+
+            <div id="pieChartDiv" class="chart-container">
+                <canvas id="pieChart"></canvas>
+            </div>
+
+            <div id="monthlyChartDiv" class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+
+            <div id="yearlyChartDiv" class="chart-container">
+                <canvas id="yearlyChart"></canvas>
+            </div>
+
+            <!-- Total Expenses -->
+            <div class="card total-card">
+                <div class="card-header-custom">
+                    <h3 class="card-title">💵 Total Expenses</h3>
+                </div>
+                <div class="total-amount">₹{{ "{:,.2f}".format(total) }}</div>
+                <div class="category-breakdown">
+                    <h4 class="breakdown-title">Category Breakdown</h4>
+                    <ul class="category-list">
+                        {% for row in totals_by_category %}
+                            <li>
+                                <span class="category-name">
+                                    <span class="category-icon">{{ get_category_icon(row.category) }}</span>
+                                    {{ row.category }}
+                                </span>
+                                <span class="category-amount">₹{{ "{:,.2f}".format(row.total) }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Expenses Table -->
+            <div class="expenses-table" id="expensesTable">
+                <div class="table-header">
+                    <h3 class="card-title">📋 Recent Expenses</h3>
+                    <div class="table-info">
+                        <span class="badge-count">{{ expenses|length }} items</span>
+                    </div>
+                </div>
+                
+                {% if expenses|length == 0 %}
+                <div class="empty-state">
+                    <div class="empty-icon">📭</div>
+                    <h3>No Expenses Yet</h3>
+                    <p>Start tracking your expenses by clicking the "Add Expense" button</p>
+                    <button class="btn-add-empty" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
+                        ➕ Add Your First Expense
+                    </button>
+                </div>
+                {% else %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>📅 Date</th>
+                                <th>🏷️ Category</th>
+                                <th>💰 Amount</th>
+                                <th>📝 Description</th>
+                                <th>⚙️ Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in expenses %}
+                            <tr class="expense-row" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+                                <td>{{ expense.date }}</td>
+                                <td>
+                                    <span class="category-badge">
+                                        {{ get_category_icon(expense.category) }} {{ expense.category }}
+                                    </span>
+                                </td>
+                                <td><strong class="amount-text">₹{{ "{:,.2f}".format(expense.amount) }}</strong></td>
+                                <td>{{ expense.description }}</td>
+                                <td>
+                                    <button class="btn-delete" onclick="confirmDelete({{ expense.id }})">
+                                        <span>🗑️</span>
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 Expense Tracker </p>
+    </footer>
+</div>
+
+<!-- Add Expense Modal -->
+<div class="modal fade" id="addExpenseModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="/add" class="modal-content" id="addExpenseForm">
+            <div class="modal-header">
+                <h5 class="modal-title">➕ Add New Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">📝 Description</label>
+                    <input type="text" name="description" class="form-control" placeholder="Enter description" required>
+                    <div class="invalid-feedback">Please enter a description</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">💵 Amount</label>
+                    <input type="number" step="0.01" name="amount" class="form-control" placeholder="Enter amount" required min="0.01">
+                    <div class="invalid-feedback">Please enter a valid amount</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">📅 Date</label>
+                    <input type="date" name="date" class="form-control" required>
+                    <div class="invalid-feedback">Please select a date</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">🏷️ Category</label>
+                    <input type="text" name="category" class="form-control" placeholder="Enter category" list="categoryList" required>
+                    <datalist id="categoryList">
+                        <option value="Food">🍔 Food</option>
+                        <option value="Transport">🚗 Transport</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Entertainment">🎬 Entertainment</option>
+                        <option value="Bills">📄 Bills</option>
+                        <option value="Health">⚕️ Health</option>
+                        <option value="Education">📚 Education</option>
+                        <option value="Other">📦 Other</option>
+                    </datalist>
+                    <div class="invalid-feedback">Please enter a category</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="get" action="/" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">📅 Filter Expenses</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="date-shortcuts mb-3">
+                    <button type="button" class="btn-shortcut" data-period="today">Today</button>
+                    <button type="button" class="btn-shortcut" data-period="week">This Week</button>
+                    <button type="button" class="btn-shortcut" data-period="month">This Month</button>
+                    <button type="button" class="btn-shortcut" data-period="lastmonth">Last Month</button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">From Date</label>
+                    <input type="date" name="from_date" id="fromDate" class="form-control" value="{{ from_date }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">To Date</label>
+                    <input type="date" name="to_date" id="toDate" class="form-control" value="{{ to_date }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Search</label>
+                    <input type="text" name="search" class="form-control" placeholder="Search..." value="{{ search }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Apply Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">⚠️ Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this expense? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Pass Python data to JS -->
+<script id="chartData" type="application/json">
+{
+    "categories": {{ totals_by_category | map(attribute='category') | list | tojson }},
+    "totals": {{ totals_by_category | map(attribute='total') | list | tojson }},
+    "months": {{ months | tojson }},
+    "monthly_totals": {{ monthly_totals | tojson }},
+    "years": {{ years | tojson }},
+    "yearly_totals": {{ yearly_totals | tojson }},
+    "expenses": {{ expenses | tojson }}
+}
+</script>
+<script src="../static/script.js"></script>
+</body>
+</html>
