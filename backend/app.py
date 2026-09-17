@@ -1,18 +1,37 @@
+import os
 import mysql.connector
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from decimal import Decimal
 from collections import defaultdict
 import calendar
 
-app = Flask(__name__)
+base_dir = os.path.abspath(os.path.dirname(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(base_dir, "templates"),
+    static_folder=os.path.join(base_dir, "static")
+)
 
 def get_db_connection():
-    return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="root",
-        database="expenses_db"
-    )
+    host = os.environ.get("MYSQL_HOST") or os.environ.get("DB_HOST") or "localhost"
+    user = os.environ.get("MYSQL_USER") or os.environ.get("DB_USER") or "root"
+    password = os.environ.get("MYSQL_PASSWORD") or os.environ.get("DB_PASSWORD") or "root"
+    database = os.environ.get("MYSQL_DATABASE") or os.environ.get("DB_NAME") or "expenses_db"
+    port = int(os.environ.get("MYSQL_PORT") or os.environ.get("DB_PORT") or 3306)
+
+    config = {
+        "host": host,
+        "user": user,
+        "password": password,
+        "database": database,
+        "port": port
+    }
+
+    ssl_ca = os.environ.get("MYSQL_SSL_CA") or os.environ.get("DB_SSL_CA")
+    if ssl_ca:
+        config["ssl_ca"] = ssl_ca
+
+    return mysql.connector.connect(**config)
 
 @app.route("/", methods=["GET"])
 def index():
